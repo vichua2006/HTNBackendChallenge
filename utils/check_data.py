@@ -37,4 +37,3 @@ for hacker in jsondata:
                 print(f"Null activity_category in scan for badge code: {badge_code}")
             if not scan.get("scanned_at"):
                 print(f"Null scanned_at in scan for badge code: {badge_code}")
-

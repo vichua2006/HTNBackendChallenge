@@ -1,16 +1,3 @@
-import sqlite3
-from flask import g
+from general import get_utc_now
 
-DATABASE = "hackers.db"
-
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        g._database = sqlite3.connect(DATABASE)
-    return g._database
-
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+print(get_utc_now())
