@@ -2,7 +2,7 @@ import os
 import sqlite3
 from utils.create_db import create_db
 from utils.general import get_utc_now, format_json_success, format_json_error, to_int
-from flask import Flask, g, request, jsonify
+from flask import Flask, g, request
 
 app = Flask(__name__)
 DATABASE_NAME = "hackers.db"
@@ -15,19 +15,7 @@ def all_users():
     cursor.execute("SELECT * FROM hackers")
     users = cursor.fetchall()
 
-    user_list = []
-    for user in users:
-        user_json = {
-            "name": user[2],
-            "badge_code": user[1],
-            "email": user[3],
-            "phone": user[4],
-            "updated_at": user[5],
-        }
-
-        user_json["scans"] = get_user_scans(user[1])
-
-        user_list.append(user_json)
+    user_list = [construct_user_json(user) for user in users]
 
     return format_json_success(user_list)
 
@@ -43,15 +31,7 @@ def user_information(badge_code):
         return format_json_error("User not found")
 
     if request.method == "GET":
-        user_json = {
-            "name": user[2],
-            "badge_code": user[1],
-            "email": user[3],
-            "phone": user[4],
-            "updated_at": user[5],
-            "scans": get_user_scans(badge_code),
-        }
-
+        user_json = construct_user_json(user)
         return format_json_success(user_json)
     else:
         updates = request.json
@@ -64,6 +44,7 @@ def user_information(badge_code):
         if extra_fields:
             return format_json_error(f"Unexpected fields: {', '.join(extra_fields)}")
 
+        # update the user data;
         old_badge_code = user[1]
         name = updates.get("name", user[2])
         email = updates.get("email", user[3])
@@ -95,8 +76,20 @@ def user_information(badge_code):
         return format_json_success(new_user_json)
 
 
+@app.route("/users/not-checked-in", methods=["GET"])
+def not_checked_in():
+    """Return a list of all the users who have not checked in (no badge_code), in a JSON format."""
+    cursor = get_db().cursor()
+    cursor.execute("SELECT * FROM hackers WHERE badge_code IS NULL")
+    users = cursor.fetchall()
+    users_list = [construct_user_json(user) for user in users]
+
+    return users_list
+
+
 @app.route("/scans", methods=["GET"])
 def scan_data():
+    """Return a list of all the scans from the database in a JSON format, with optional filters for the minimum and maximum frequency and activity category."""
     # strict check for unexpected query parameters
     params = request.args
     expected_fields = {"min_frequency", "max_frequency", "activity_category"}
@@ -147,7 +140,7 @@ def user_scans(badge_code):
             VALUES (?, ?, ?, ?)""",
             (activity_name, activity_category, scanned_at, badge_code),
         )
-        # update user's updated_at field
+        # update corresponding user's updated_at field
         cursor.execute(
             """
             UPDATE hackers
@@ -171,7 +164,7 @@ def user_scans(badge_code):
 
 
 @app.teardown_appcontext
-def close_connection(exception) -> None:
+def close_connection(exception):
     """Closes the connection to the database"""
     db = getattr(g, "_database", None)
     if db is not None:
@@ -211,11 +204,26 @@ def change_scan_badge_code(old_code: str, new_code: str) -> None:
     get_db().commit()
 
 
+def construct_user_json(user_row: sqlite3.Row):
+    """Constructs a JSON object for a user from a row in the hackers table"""
+    user_json = {
+        "name": user_row[2],
+        "badge_code": user_row[1],
+        "email": user_row[3],
+        "phone": user_row[4],
+        "updated_at": user_row[5],
+    }
+
+    user_json["scans"] = get_user_scans(user_row[1])
+
+    return user_json
+
+
 def filter_scans(
     min_frequency: int = None, max_frequency: int = None, activity_category: str = None
 ) -> list[dict[str, str]]:
     """Return a list of all the scans from the database in a JSON format, with optional filters for the minimum and maximum frequency and activity category.
-    for additional filter options, consider refactoring options into individual functions
+    for additional filter options, consider refactoring options into individual functions that applies a filter the scans list efficiently
     """
 
     # filter category through sqlite query
