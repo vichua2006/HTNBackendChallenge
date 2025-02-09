@@ -2,9 +2,10 @@ import sqlite3
 import json
 import datetime
 
-def main():
-    # connect to the database and load json data
-    sqliteConnection = sqlite3.connect("../hackers.db")
+def create_db(filename: str = "hackers") -> None:
+    '''Creates a sqlite database and populates it with the data from the example_hacker_data.json file.
+    Assumes that there does NOT currenctly exist a database with the name hackers.db in root directory '''
+    sqliteConnection = sqlite3.connect(f"../{filename}.db")
     with open("../data/example_hacker_data.json") as file:
         hackerData = json.load(file)
 
@@ -36,8 +37,8 @@ def main():
         # get the current time in UTC (without +00:00, same format as the provided json)
         utcTime = datetime.datetime.now(datetime.UTC).isoformat()[:-6]
         # inserting into the hacker table
-        badge_code = hacker["badge_code"] if hacker["badge_code"] else None # to acccount for hackers who have not checked in; their badge_code will be NULL
-        data = (badge_code, hacker["name"], hacker["email"], hacker["phone"], utcTime)
+        badgeCode = hacker["badge_code"] if hacker["badge_code"] else None # to acccount for hackers who have not checked in; their badge_code will be NULL
+        data = (badgeCode, hacker["name"], hacker["email"], hacker["phone"], utcTime)
         command = '''INSERT INTO hackers (badge_code, name, email, phone, updated_at) VALUES (?, ?, ?, ?, ?);'''
         cursor.execute(command, data)
         for activity in hacker["scans"]:
@@ -52,4 +53,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    create_db()
