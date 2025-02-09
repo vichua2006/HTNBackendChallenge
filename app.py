@@ -1,7 +1,7 @@
 import os
 import sqlite3
-from utils.create_dp import create_db
-from utils.general import get_utc_now, format_json_success, format_json_error
+from utils.create_db import create_db
+from utils.general import get_utc_now, format_json_success, format_json_error, to_int
 from flask import Flask, g, request, jsonify
 
 app = Flask(__name__)
@@ -95,11 +95,30 @@ def user_information(badge_code):
         return format_json_success(new_user_json)
 
 
+@app.route("/scans", methods=["GET"])
+def scan_data():
+    # strict check for unexpected query parameters
+    params = request.args
+    expected_fields = {"min_frequency", "max_frequency", "activity_category"}
+    extra_fields = set(params.keys()) - expected_fields
+    if extra_fields:
+        return format_json_error(f"Unexpected parameters: {', '.join(extra_fields)}")
+
+    min_frequency = params.get("min_frequency")
+    max_frequency = params.get("max_frequency")
+    activity_category = params.get("activity_category")
+    filtered_list = filter_scans(
+        to_int(min_frequency), to_int(max_frequency), activity_category
+    )
+
+    return format_json_success(filtered_list)
+
+
 @app.route("/scans/<badge_code>", methods=["GET", "PUT"])
 def user_scans(badge_code):
     cursor = get_db().cursor()
 
-    cursor.execute("SELECT * FROM hackers WHERE badge_code = ?", (badge_code, ))
+    cursor.execute("SELECT * FROM hackers WHERE badge_code = ?", (badge_code,))
     user = cursor.fetchone()
     if not user:
         return format_json_error("Invalid update: User not found")
@@ -150,6 +169,7 @@ def user_scans(badge_code):
 
         return format_json_success(scan_json)
 
+
 @app.teardown_appcontext
 def close_connection(exception) -> None:
     """Closes the connection to the database"""
@@ -189,3 +209,45 @@ def change_scan_badge_code(old_code: str, new_code: str) -> None:
         "UPDATE scans SET hacker_badge = ? WHERE hacker_badge = ?", (new_code, old_code)
     )
     get_db().commit()
+
+
+def filter_scans(
+    min_frequency: int = None, max_frequency: int = None, activity_category: str = None
+) -> list[dict[str, str]]:
+    """Return a list of all the scans from the database in a JSON format, with optional filters for the minimum and maximum frequency and activity category.
+    for additional filter options, consider refactoring options into individual functions
+    """
+
+    # filter category through sqlite query
+    cursor = get_db().cursor()
+    if activity_category:
+        cursor.execute(
+            "SELECT * FROM scans WHERE activity_category = ?", (activity_category,)
+        )
+    else:
+        cursor.execute("SELECT * FROM scans")
+
+    # filter min, max (and potentially other values and complicated combinations) directly in Python
+    scans = cursor.fetchall()
+    activity_frequency = {}
+    for scan in scans:
+        activity_name = scan[1]
+        if not activity_frequency.get(activity_name):
+            activity_frequency[activity_name] = 0
+        activity_frequency[activity_name] += 1
+
+    scans_list_json = []
+    for name in activity_frequency:
+        if min_frequency and activity_frequency[name] < min_frequency:
+            continue
+        if max_frequency and activity_frequency[name] > max_frequency:
+            continue
+
+        scans_list_json.append(
+            {
+                "activity_name": name,
+                "frequency": activity_frequency[name],
+            }
+        )
+
+    return scans_list_json
