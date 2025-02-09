@@ -22,7 +22,7 @@ To run the server, navigate to the root directory and run:
 flask run
 ```
 
-By default the server runs in `http://localhost:5000/`. The first time the server is ran, a file `hackers.db` will be created and populated with the provided sample data in `/data/example_hacker_data.json`
+By default the server runs in `http://localhost:5000/`. The first time the server is ran, a file `hackers.db` will be created in the root directory and populated with the provided sample data in `/data/example_hacker_data.json`
 
 ## Database Schema
 
