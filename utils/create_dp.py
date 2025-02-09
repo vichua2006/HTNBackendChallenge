@@ -2,12 +2,14 @@ import sqlite3
 import json
 from utils.general import get_utc_now
 
-def create_db(filename: str = "hackers") -> None:
+
+def create_db(filename: str = "database.db") -> None:
     """Creates a sqlite database and populates it with the data from the example_hacker_data.json file.
-    Assumes that there does NOT currenctly exist a database with the name hackers.db in root directory
+    To be called from the root directory of the project, and
+    assumes that there does NOT currenctly exist a database with the name in the root directory.
     """
-    sqliteConnection = sqlite3.connect(f"../{filename}.db")
-    with open("../data/example_hacker_data.json") as file:
+    sqliteConnection = sqlite3.connect(f"{filename}")
+    with open("./data/example_hacker_data.json") as file:
         hackerData = json.load(file)
 
     cursor = sqliteConnection.cursor()
