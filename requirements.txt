@@ -1,6 +1,5 @@
 Flask==2.2.2
 Werkzeug==2.2.2 # Flask dependency
-sqlite3
 requests
 black
 pylint
