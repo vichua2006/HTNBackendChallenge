@@ -7,13 +7,16 @@ url = f"http://localhost:5000/scans/{new_code}"
 
 response = requests.put(
     url,
-    json={
-        "badge_code": badge_code,
-    },
     # json={
-    #     "activity_name": "North Food",
-    #     "activity_category": "Food",
-    # }
+    #     "name": "north food",
+    #     "email": "whatever",
+    #     "phone": "whatever",
+    #     "badge_code": new_code,
+    # },
+    json={
+        "activity_name": "North Food",
+        "activity_category": "Food",
+    }
 )
 
 print(response.json())
