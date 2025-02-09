@@ -155,7 +155,6 @@ def user_scans(badge_code):
             "activity_name": activity_name,
             "activity_category": activity_category,
             "scanned_at": scanned_at,
-            "badge_code": badge_code,
         }
 
         return format_json_success(scan_json)
